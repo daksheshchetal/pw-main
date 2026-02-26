@@ -83,6 +83,9 @@ function ProfileStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={UserScreen} />
       <Stack.Screen name='Orders' component={MyOrdersScreen}/>
+     <Stack.Screen name="AddressManager" component={AddressManagerScreen} />
+     <Stack.Screen name="Favorites" component={FavoritesScreen} />
+     <Stack.Screen name="Help" component={HelpScreen} />
     </Stack.Navigator>
   );
 }
