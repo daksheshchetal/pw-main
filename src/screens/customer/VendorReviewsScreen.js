@@ -65,4 +65,154 @@ export default function VendorReviewsScreen({route, navigation}){
         </View>
     </View>
   );
+  return(
+    <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+            <TouchableOpacity onPress={()=> navigation.goBack()}>
+                <Text style={styles.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Reviews</Text>
+            <View style={styles.placeholder}/>
+        </View>
+        {loading? (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary}/>
+                <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+        ):(
+            <FlatList
+            data={reviews}
+            keyExtractor={(item)=>item.id}
+            renderItem={renderReview}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyContainer}>
+                        <Text style={styles.emptyEmoji}>⭐</Text>
+                        <Text style={styles.emptyTitle}>No reviews yet</Text>
+                        <Text style={styles.emptyText}>
+                            Be the first one to review {vendorName}!
+                        </Text>
+                    </Text>
+                </View>
+            }
+            />
+        )}
+    </SafeAreaView>
+  )
 }
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backIcon: {
+    fontSize: 32,
+    color: COLORS.primary,
+    fontWeight: '300',
+  },
+  headerTitle: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.textPrimary,
+  },
+  placeholder: {
+    width: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+  },
+  listContent: {
+    padding: SPACING.lg,
+  },
+  reviewCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    elevation: 2,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SPACING.md,
+  },
+  avatarText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: FONTS.weights.bold,
+  },
+  reviewHeaderInfo: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.semibold,
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  stars: {
+    fontSize: 16,
+    color: '#FFD700',
+  },
+  date: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textTertiary,
+  },
+  reviewText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textPrimary,
+    lineHeight: 20,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xxxl * 2,
+    paddingHorizontal: SPACING.xl,
+  },
+  emptyEmoji: {
+    fontSize: 80,
+    marginBottom: SPACING.lg,
+  },
+  emptyTitle: {
+    fontSize: FONTS.sizes.xl,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+  },
+  emptyText: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+});
