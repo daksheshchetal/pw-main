@@ -10,7 +10,7 @@ import CartScreen from '../screens/customer/CartScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import VendorProfileScreen from '../screens/customer/VendorProfileScreen';
 import OrderTrackingScreen from '../screens/customer/OrderTrackingScreen';
-import ReviewScreen from '../screens/customer/ReviewScreen';
+import ReviewScreen from '../screens/customer/WriteReviewScreen';
 import FavoritesScreen from '../screens/customer/FavoritesScreen';
 import SettingsScreen from '../screens/customer/SettingsScreen';
 import AddressManagerScreen from '../screens/customer/AddressManagerScreen';
@@ -20,6 +20,8 @@ import CategoryScreen from '../screens/customer/CategoryScreen';
 import UserScreen from '../screens/customer/UserScreen';
 import CategoryBrowserScreen from '../screens/customer/CategoryBrowserScreen';
 import MyOrdersScreen from '../screens/customer/MyOrdersScreen';
+import WriteReviewScreen from '../screens/customer/WriteReviewScreen';
+import VendorReviewsScreen from '../screens/customer/VendorReviewsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -86,6 +88,9 @@ function ProfileStack() {
      <Stack.Screen name="AddressManager" component={AddressManagerScreen} />
      <Stack.Screen name="Favorites" component={FavoritesScreen} />
      <Stack.Screen name="Help" component={HelpScreen} />
+     <Stack.Screen name="WriteReview" component={WriteReviewScreen}/>
+     <Stack.Screen name="VendorReviews" component={VendorReviewsScreen}/>
+     <Stack.Screen name="Settings" component={SettingsScreen}/>
     </Stack.Navigator>
   );
 }

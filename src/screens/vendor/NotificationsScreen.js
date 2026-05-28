@@ -123,7 +123,7 @@ return()=>unsubscribe();
                 notification.data.params||{});
             }
         };
-    }
+    
     const getNotificationIcon = (type) => {
     const icons = {
       order: '📦',
