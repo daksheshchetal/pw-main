@@ -3,9 +3,27 @@ import * as Location from 'expo-location';
 import React from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from './src/context/AuthContext'
+import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartProvider';
 import RootNavigator from './src/navigation/RootNavigator';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
+
+let Notifications;
+try {
+  if (Constants.appOwnership !== 'expo') {
+    Notifications = require('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  }
+} catch (error) {
+  console.log('Push notifications disabled in Expo Go');
+}
 
 // Define geofencing task for mohalla alerts (mobile only)
 if (Platform.OS !== 'web') {
@@ -16,7 +34,15 @@ if (Platform.OS !== 'web') {
     }
     if (eventType === Location.GeofencingEventType.Enter) {
       console.log('A vendor entered your Mohalla!');
-      // TODO: Trigger push notification here
+      if (Notifications) {
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Fresh Food Nearby! 🍲",
+            body: "A vendor just entered your Mohalla. Check out what they're serving!",
+          },
+          trigger: null,
+        });
+      }
     }
   });
 }
@@ -27,12 +53,14 @@ if (Platform.OS !== 'web') {
  */
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <CartProvider>
-          <RootNavigator />
-        </CartProvider>
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthProvider>
+          <CartProvider>
+            <RootNavigator />
+          </CartProvider>
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

@@ -1,48 +1,33 @@
 {
   "expo": {
-    "name": "Paaswala Customer",
-    "slug": "paaswala-customer",
+    "name": "paaswala",
+    "slug": "paaswala",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme":"paaswala",
+    "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./src/assets/splash-screen.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FF6B35"
+      "backgroundColor": "#0051D5"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.paaswala.customer",
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Paaswala needs your location to show nearby vendors in your mohalla."
-      }
+      "bundleIdentifier": "com.daksh.paaswala"
     },
     "android": {
+      "package": "com.daksh.paaswala",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FF6B35"
-      },
-      "package": "com.paaswala.customer",
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./src/assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow Paaswala to use your location to find nearby vendors."
-        }
-      ]
+      "@react-native-community/datetimepicker"
     ]
   }
 }
