@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS, SPACING, RADIUS } from '../../constants';
 
@@ -41,7 +41,7 @@ export default function VendorSettingsScreen({ navigation }) {
       items: [
         { id: 'profile', label: 'Edit Profile', icon: '👤', screen: 'StallSetup' },
         { id: 'menu', label: 'Manage Menu', icon: '🍽️', screen: 'Menu' },
-        { id: 'address', label: 'Stall Location', icon: '📍', action: () => Alert.alert('Coming Soon') },
+        { id: 'address', label: 'Stall Location', icon: '📍', screen: 'StallSetup' },
       ],
     },
     {
@@ -56,8 +56,8 @@ export default function VendorSettingsScreen({ navigation }) {
       section: 'Support',
       items: [
         { id: 'help', label: 'Help & Support', icon: '💬', screen: 'Help' },
-        { id: 'terms', label: 'Terms & Conditions', icon: '📄', action: () => Alert.alert('Coming Soon') },
-        { id: 'privacy', label: 'Privacy Policy', icon: '🔒', action: () => Alert.alert('Coming Soon') },
+        { id: 'terms', label: 'Terms & Conditions', icon: '📄', screen: 'Terms' },
+        { id: 'privacy', label: 'Privacy Policy', icon: '🔒', screen: 'Privacy' },
       ],
     },
   ];
@@ -66,8 +66,7 @@ export default function VendorSettingsScreen({ navigation }) {
     if (item.action) {
       item.action();
     } else if (item.screen) {
-      // Check if screen exists, otherwise show coming soon
-      const availableScreens = ['Menu', 'Earnings', 'StallSetup'];
+      const availableScreens = ['Menu', 'Earnings', 'StallSetup', 'TransactionHistory', 'Statistics', 'Help', 'Terms', 'Privacy'];
       if (availableScreens.includes(item.screen)) {
         navigation.navigate(item.screen);
       } else {
@@ -77,7 +76,7 @@ export default function VendorSettingsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

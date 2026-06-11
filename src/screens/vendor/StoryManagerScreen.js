@@ -1,375 +1,419 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Image,
-    Modal,
-    TextInput,
-    Alert,
-    ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, orderBy} from 'firebase/firestore';
-import {db} from '../../services/firebase/firebaseConfig';
-import {useAuth} from '../../context/AuthContext';
-import {COLORS, FONTS, SPACING, RADIUS} from '../../constants';
-const STORY_DURATION=24
-export default function StoryManagerScreen({navigation}){
-    const {currentUser}=useAuth();
-    const [loading, setLoading]=useState(true);
-    const [stories, setStories]=useState([]);
-    const [createModalVisible, setCreateModalVisible]=useState(false);
-    const[previewModalVisible, setPreviewModalVisible]=useState(false);
-    const [selectedStory, setSelectedStory]= useState(null);
-    //Create story form
-    const [storyType, setStoryType]=useState('text'); // text, image, promotion
-    const [storyText, setStoryText]=useState('');
-    const [storyImage, setStoryImage]=useState('');
-    const [promotionTitle, setPromotionTitle]=useState('');
-    const [promotionDiscount, setPromotionDiscount]=useState('');
-    useEffect(()=>{
-        if (currentUser){
-            fetchStories();
-        }
-    }, [currentUser]);
-    const fetchStories=()=>{
-        if (!currentUser) return;
-        const storiesRef= collection(db, 'stories');
-        const q=query(
-            storiesRef,
-            where('vendorId','==',currentUser.uid),
-            orderBy('createdAt', 'desc')
-        );
-    
-    const unsubscribe=onSnapshot(q,(snapshot)=>{
-        const storiesList=[];
-        const now=new Date();
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { db } from '../../services/firebase/firebaseConfig';
+import { useAuth } from '../../context/AuthContext';
+import { COLORS, FONTS, SPACING, RADIUS } from '../../constants';
 
-        snapshot.forEach((doc)=>{
-            const story={id: doc.id, ... doc.data()};
-            const createdAt= story.createdAt?.toDate();
-            const hoursAgo=(now-createdAt)/(1000*60*60);
+const STORY_DURATION = 24; // hours
 
-            //Only include stories less than 24 hours old
-            if (hoursAgo<STORY_DURATION){
-                story.expiresIn=Math.ceil(STORY_DURATION-hoursAgo);
-                story.views=story.views||0;
-                storiesList.push(story);
-            }
-        });
-        setStories(storiesList);
-        setLoading(false);
-    });
-    return()=>unsubscribe();
-    };
-    const handleCreateStory= async()=>{
-        if(storyType==='text'&& !storyText.trim()){
-            Alert.alert('Required','Please enter story text');
-            return;
-        }
-        if(storyType==='promotion' && (!promotionTitle.trim()||!promotionDiscount.trim())){
-            Alert.alert('Required','Please enter promotion details');
-            return;
-        }
-        try{
-            const storyData={
-                vendorId: currentUser.uid,
-                type: storyType,
-                createdAt: serverTimestamp(),
-                views:0,
-                expiresAt: new Date(Date.now()+STORY_DURATION * 60*60*1000),
-            };
-            if (storyType === 'text'){
-                storyData.text=storyText.trim();
-                storyData.backgroundColor='#4CAF50';
-            } else if (storyType==='image'){
-                storyData.imageUrl=storyImage;
-                storyData.caption=storyText.trim();
-            } else if (storyType==='promotion'){
-                storyData.title=promotionTitle.trim();
-                storyData.discount=promotionTitle.trim();
-                storyData.backgroundColor='#FF9800';
-            }
-            await addDoc(collection(db, 'stories', storyData));
-            Alert.alert('Success!','Story posted successfully');
-            setCreateModalVisible(false);
-            resetForm();
-        }
-        catch(error){
-            console.error('Error creating story:',error);
-            Alert.alert('Error','Could not create story');
-        }
+export default function StoryManagerScreen({ navigation }) {
+  const { currentUser } = useAuth();
+  
+  const [loading, setLoading] = useState(true);
+  const [stories, setStories] = useState([]);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [selectedStory, setSelectedStory] = useState(null);
+  
+  // Create story form
+  const [storyType, setStoryType] = useState('text'); // text, image, promotion
+  const [storyText, setStoryText] = useState('');
+  const [storyImage, setStoryImage] = useState('');
+  const [promotionTitle, setPromotionTitle] = useState('');
+  const [promotionDiscount, setPromotionDiscount] = useState('');
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchStories();
     }
-    const handleDeleteStory=(storyId)=>{
-        Alert.alert(
-            'Delete Story',
-            'Are you sure you want to delete this story?',
-            [
-                {text:'Cancel',style:'cancel'},
-                {
-                    text:'Delete',
-                    style: 'destructive',
-                    onPress: async()=>{
-                        try{
-                            await deleteDoc(dob(db, 'stories', storyId));
-                            Alert.alert('Deleted','Story deleted successfully');
-                        } catch (error){
-                            Alert.alert('Error','Could not delete story');
-                        }
-                    },
-                },
-            ]
-        );
-    };
-    const resetForm=()=> {
-        setStoryType('text');
-        setStoryText('');
-        setStoryImage('');
-        setPromotionTitle('');
-        setPromotionDiscount('');
-    };
-    const renderStory=({item})=>(
+  }, [currentUser]);
+
+  const fetchStories = () => {
+    if (!currentUser) return;
+    const storiesRef = collection(db, 'stories');
+    const q = query(
+      storiesRef,
+      where('vendorId', '==', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const storiesList = [];
+      const now = new Date();
+
+      snapshot.forEach((doc) => {
+        const story = { id: doc.id, ...doc.data() };
+        const createdAt = story.createdAt?.toDate();
+        const hoursAgo = (now - createdAt) / (1000 * 60 * 60);
+
+        // Only include stories less than 24 hours old
+        if (hoursAgo < STORY_DURATION) {
+          story.expiresIn = Math.ceil(STORY_DURATION - hoursAgo);
+          story.views = story.views || 0;
+          storiesList.push(story);
+        }
+      });
+      
+      storiesList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      setStories(storiesList);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  };
+
+  const handleCreateStory = async () => {
+    if (storyType === 'text' && !storyText.trim()) {
+      Alert.alert('Required', 'Please enter story text');
+      return;
+    }
+
+    if (storyType === 'promotion' && (!promotionTitle.trim() || !promotionDiscount.trim())) {
+      Alert.alert('Required', 'Please enter promotion details');
+      return;
+    }
+
+    try {
+      const storyData = {
+        vendorId: currentUser.uid,
+        type: storyType,
+        createdAt: serverTimestamp(),
+        views: 0,
+        expiresAt: new Date(Date.now() + STORY_DURATION * 60 * 60 * 1000),
+      };
+
+      if (storyType === 'text') {
+        storyData.text = storyText.trim();
+        storyData.backgroundColor = '#4CAF50';
+      } else if (storyType === 'image') {
+        storyData.imageUrl = storyImage;
+        storyData.caption = storyText.trim();
+      } else if (storyType === 'promotion') {
+        storyData.title = promotionTitle.trim();
+        storyData.discount = promotionDiscount.trim();
+        storyData.backgroundColor = '#FF9800';
+      }
+
+      await addDoc(collection(db, 'stories'), storyData);
+
+      Alert.alert('Success!', 'Story posted successfully');
+      setCreateModalVisible(false);
+      resetForm();
+    } catch (error) {
+      console.error('Error creating story:', error);
+      Alert.alert('Error', 'Could not create story');
+    }
+  };
+
+  const handleDeleteStory = (storyId) => {
+    Alert.alert(
+      'Delete Story',
+      'Are you sure you want to delete this story?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'stories', storyId));
+              Alert.alert('Deleted', 'Story deleted successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Could not delete story');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const resetForm = () => {
+    setStoryType('text');
+    setStoryText('');
+    setStoryImage('');
+    setPromotionTitle('');
+    setPromotionDiscount('');
+  };
+
+  const renderStory = ({ item }) => (
+    <TouchableOpacity
+      style={styles.storyCard}
+      onPress={() => {
+        setSelectedStory(item);
+        setPreviewModalVisible(true);
+      }}
+    >
+      {item.type === 'text' && (
+        <View style={[styles.storyPreview, { backgroundColor: item.backgroundColor }]}>
+          <Text style={styles.storyPreviewText} numberOfLines={3}>
+            {item.text}
+          </Text>
+        </View>
+      )}
+
+      {item.type === 'image' && (
+        <View style={styles.storyPreview}>
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.imagePlaceholderText}>📸</Text>
+          </View>
+          {item.caption && (
+            <Text style={styles.storyCaption} numberOfLines={2}>
+              {item.caption}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {item.type === 'promotion' && (
+        <View style={[styles.storyPreview, { backgroundColor: item.backgroundColor }]}>
+          <Text style={styles.promotionBadge}>🎉 OFFER</Text>
+          <Text style={styles.promotionDiscount}>{item.discount}</Text>
+          <Text style={styles.promotionTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.storyFooter}>
+        <View style={styles.storyInfo}>
+          <Text style={styles.storyTime}>
+            {item.expiresIn}h left
+          </Text>
+          <Text style={styles.storyViews}>
+            👁 {item.views} views
+          </Text>
+        </View>
         <TouchableOpacity
-        style={styles.storyCard}
-        onPress={()=>{
-            setSelectedStory(item);
-            setPreviewModalVisible(true);
-        }}>
-            {item.type==='text'&&(
-                <View style={[styles.storyPreview, {backgroundColor:item.backgroundColor}]}>
-                    <Text style={styles.storyPreviewText} numberOfLines={3}>
-                        {item.text}
-                    </Text>
-                </View>
-            )}
-            {item.type==='image' &&(
-                <View style={styles.storyPreview}>
-                    <View style={styles.imagePlaceholder}>
-                        <Text style={styles.imagePlaceholderText}>📸</Text>
-                    </View>
-                    {item.caption &&(
-                        <Text style={styles.storyCaption} numberOfLines={2}>
-                            {item.caption}
-                        </Text>
-                    )}
-                </View>
-            )}
-            {item.type==='promotion' &&(
-                <View style={[styles.storyPreview, {backgroundColor:item.backgroundColor}]}>
-                    <Text style={styles.promotionBadge}>🎉 OFFER</Text>
-                    <Text style={styles.promotionDiscount}>{item.discount}</Text>
-                    <Text style={styles.promotionTitle} numberOfLines={2}>
-                         {item.title}</Text>
-                </View>
-            )}
-            <View style={styles.storyFooter}>
-                <View style={styles.storyInfo}>
-                    <Text style={styles.storyTime}>
-                        {item.expiresIn}h left
-                    </Text>
-                    <Text style={styles.storyViews}>
-                        👁{item.views} views
-                    </Text>
-                </View>
-                <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={()=> handleDeleteStory(item.id)}
-                >
-        <Text style={styles.deleteIcon}>🗑️</Text>
-    </TouchableOpacity>
-    </View>
-    </TouchableOpacity>
-    )
-    const renderCreateModal=()=>(
-        <Modal
-        visible={createModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={()=> setCreateModalVisible(false)}>
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Create Story</Text>
-                    {/* Story Type Selection */}
-                    <View style={styles.typeSelector}>
-                        {['text','image','promotion'].map((type)=>(
-                            <TouchableOpacity
-                            key={type}
-                            style={[styles.typeButton, storyType===type && styles.typeButtonActive]}
-                            onPress={()=> setStoryType(type)}>
-                                <Text style={[styles.typeButtonText, storyType === type && styles.typeButtonTextActive]}>
-                                {type === 'text' ? '📝 Text' : type === 'image' ? '📸 Image' : '🎉 Promo'}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    {storyType='text' && (
-                        <View>
-                            <Text style={styles.inputLabel}>Story Text</Text>
-                            <TextInput
-                            style={[styles.input, styles.textArea]}
-                            placeholder="What's happening at your stall?"
-                            value={storyText}
-                            onChangeText={setStoryText}
-                            multiline
-                            numberOfLines={4}
-                            maxLength={150}
-                            />
-                            <Text style={styles.charCount}>{storyText.length}/150</Text>
-                            </View>
-                    )}
-                    {storyType==='image' &&(
-                        <View>
-                            <Text style={styles.inputLabel}>Image URL</Text>
-                            <TextInput
-                            style={styles.input}
-                            placeholder="https://example.com/image.jpg"
-                            value={storyImage}
-                            onChangeText={setStoryImage}
-                            />
-                            <Text style={styles.inputLabel}>Caption(optional)</Text>
-                            <TextInput
-                            style={styles.input}
-                            placeholder="Describe your photo..."
-                            value={storyText}
-                            onChangeText={setStoryText}
-                            maxLength={100}
-                            />
-                            </View>
-                    )}
-                    {storyType==='promotion' &&(
-                        <View>
-                            <Text style={styles.inputLabel}>Promotion Title</Text>
-                            <TextInput
-                            style={styles.input}
-                            placeholder="e.g., Get 2 Samosas for ₹20!"
-                            value={promotionTitle}
-                            onChangeText={setPromotionTitle}
-                            maxLength={60}
-                            />
-                            <Text style={styles.inputLabel}>Discount Text</Text>
-                            <TextInput
-                            style={styles.input}
-                            placeholder="e.g., 20% OFF or BUY 1 GET 1"
-                            value={promotionDiscount}
-                            onChangeText={setPromotionDiscount}
-                            maxLength={30}
-                            />
-                            </View>
-                    )}
-                    <View syle={styles.modalActions}>
-                        <TouchableOpacity
-                        style={styles.cancelButton}
-                        onPress={()=>{
-                            setCreateModalVisible(false);
-                            resetForm();
-                        }}
-                        >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                        style={styles.createButton}
-                        onPress={handleCreateStory}
-                        >
-                            <Text style={styles.createButtonText}>Post Story</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-        </Modal>
-    )
-    const renderPreviewModal=()=>(
-        <Modal
-        visible={previewModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={()=> setPreviewModalVisible(false)}
+          style={styles.deleteButton}
+          onPress={() => handleDeleteStory(item.id)}
         >
-            <View style={styles.previewOverlay}>
-                <TouchableOpacity
-                style={styles.closePreview}
-                onPress={()=>setPreviewModalVisible(false)}
-                >
-                    <Text style={styles.closePreviewText}>X</Text>
-                    </TouchableOpacity>
-                    {selectedStory && (
-                        <View style={styles.previewContainer}>
-                            {selectedStory.type==='text' &&(
-                                <View style={[styles.fullStory, {backgroundColor: selectedStory.backgroundColor}]}>
-                                <Text style={styles.fullStoryText}>{selectedStory.text}</Text>
-                                </View>
-                            )}
-                            {selectedStory.type==='promotion' &&(
-                                <View style={[styles.fullStory,{backgroundColor: selectedStory.backgroundColor}]}>
-                                    <Text style={styles.fullPromoBadge}>🎉SPECIAL OFFER</Text>
-                                    <Text style={styles.fullPromoDiscount}>{selectedStory.discount}</Text>
-                                    <Text style={styles.fullPromoTitle}>{selectedStory.title}</Text>
-                                    <Text style={styles.fullPromoExpiry}>
-                                        Expires in {selectedStory.expiresIn} hours
-                                    </Text>
-                                    </View>
-                            )}
-                            <View style={styles.previewStats}>
-                                <Text style={styles.previewStatsText}>
-                                    👁️{selectedStory.views} views • {selectedStory.expiresIn}h left
-                                </Text>
-                            </View>
-                        </View>
-                    )}
-                    </View>   
-        </Modal>
-    )
-    return(
-        <SafeAreaView style={styles.container} edges={['top','left','right']}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={()=> navigation.goBack()}>
-                    <Text style={styles.backIcon}>‹</Text>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Story Manager</Text>
-                <TouchableOpacity onPress={()=> setCreateModalVisible(true)}>
-                    <Text style={styles.addIcon}>+</Text>
-                </TouchableOpacity>
-            </View>
-            <View style={styles.infoBanner}>
-                <Text style={styles.infoBannerText}>
-                    📱Stories disappear after 24 hours • Reach more customers!
+          <Text style={styles.deleteIcon}>🗑️</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderCreateModal = () => (
+    <Modal
+      visible={createModalVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setCreateModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create Story</Text>
+
+          {/* Story Type Selection */}
+          <View style={styles.typeSelector}>
+            {['text', 'image', 'promotion'].map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[styles.typeButton, storyType === type && styles.typeButtonActive]}
+                onPress={() => setStoryType(type)}
+              >
+                <Text style={[styles.typeButtonText, storyType === type && styles.typeButtonTextActive]}>
+                  {type === 'text' ? '📝 Text' : type === 'image' ? '📸 Image' : '🎉 Promo'}
                 </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Text Story */}
+          {storyType === 'text' && (
+            <View>
+              <Text style={styles.inputLabel}>Story Text</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="What's happening at your stall?"
+                value={storyText}
+                onChangeText={setStoryText}
+                multiline
+                numberOfLines={4}
+                maxLength={150}
+              />
+              <Text style={styles.charCount}>{storyText.length}/150</Text>
             </View>
-            {loading?(
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.primary}/>
-                </View>
-            ):(
-                <FlatList
-                data={stories}
-                keyExtractor={(item)=>item.id}
-                renderItem={renderStory}
-                numColumns={2}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyEmoji}>📱</Text>
-                        <Text style={styles.emptyTitle}>No Active Stories</Text>
-                        <Text style={styles.emptyText}>
-                            Create your first story to engage customers!
-                        </Text>
-                        <TouchableOpacity
-                        style={styles.createFirstButton}
-                        onPress={()=>setCreateModalVisible(true)}
-                        >
-                            <Text style={styles.createFirstButtonText}>+ Create Story</Text>
-                        </TouchableOpacity>
-                    </View>
-                }
-                />
+          )}
+
+          {/* Image Story */}
+          {storyType === 'image' && (
+            <View>
+              <Text style={styles.inputLabel}>Image URL</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="https://example.com/image.jpg"
+                value={storyImage}
+                onChangeText={setStoryImage}
+              />
+              <Text style={styles.inputLabel}>Caption (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Describe your photo..."
+                value={storyText}
+                onChangeText={setStoryText}
+                maxLength={100}
+              />
+            </View>
+          )}
+
+          {/* Promotion Story */}
+          {storyType === 'promotion' && (
+            <View>
+              <Text style={styles.inputLabel}>Promotion Title</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Get 2 Samosas for ₹20!"
+                value={promotionTitle}
+                onChangeText={setPromotionTitle}
+                maxLength={60}
+              />
+              <Text style={styles.inputLabel}>Discount Text</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 20% OFF or BUY 1 GET 1"
+                value={promotionDiscount}
+                onChangeText={setPromotionDiscount}
+                maxLength={30}
+              />
+            </View>
+          )}
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setCreateModalVisible(false);
+                resetForm();
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={handleCreateStory}
+            >
+              <Text style={styles.createButtonText}>Post Story</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderPreviewModal = () => (
+    <Modal
+      visible={previewModalVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setPreviewModalVisible(false)}
+    >
+      <View style={styles.previewOverlay}>
+        <TouchableOpacity
+          style={styles.closePreview}
+          onPress={() => setPreviewModalVisible(false)}
+        >
+          <Text style={styles.closePreviewText}>✕</Text>
+        </TouchableOpacity>
+
+        {selectedStory && (
+          <View style={styles.previewContainer}>
+            {selectedStory.type === 'text' && (
+              <View style={[styles.fullStory, { backgroundColor: selectedStory.backgroundColor }]}>
+                <Text style={styles.fullStoryText}>{selectedStory.text}</Text>
+              </View>
             )}
-            {renderCreateModal()}
-            {renderPreviewModal()}
-        </SafeAreaView>
-    )
+
+            {selectedStory.type === 'promotion' && (
+              <View style={[styles.fullStory, { backgroundColor: selectedStory.backgroundColor }]}>
+                <Text style={styles.fullPromoBadge}>🎉 SPECIAL OFFER</Text>
+                <Text style={styles.fullPromoDiscount}>{selectedStory.discount}</Text>
+                <Text style={styles.fullPromoTitle}>{selectedStory.title}</Text>
+                <Text style={styles.fullPromoExpiry}>
+                  Expires in {selectedStory.expiresIn} hours
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.previewStats}>
+              <Text style={styles.previewStatsText}>
+                👁 {selectedStory.views} views • {selectedStory.expiresIn}h left
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+       {/* Header */}
+     <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Story Manager</Text>
+        <TouchableOpacity onPress={() => setCreateModalVisible(true)}>
+          <Text style={styles.addIcon}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Info Banner */}
+      <View style={styles.infoBanner}>
+        <Text style={styles.infoBannerText}>
+          📱 Stories disappear after 24 hours • Reach more customers!
+        </Text>
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={stories}
+          keyExtractor={(item) => item.id}
+          renderItem={renderStory}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>📱</Text>
+              <Text style={styles.emptyTitle}>No Active Stories</Text>
+              <Text style={styles.emptyText}>
+                Create your first story to engage customers!
+              </Text>
+              <TouchableOpacity
+                style={styles.createFirstButton}
+                onPress={() => setCreateModalVisible(true)}
+              >
+                <Text style={styles.createFirstButtonText}>+ Create Story</Text>
+              </TouchableOpacity>
+            </View>
+          }
+        />
+      )}
+
+      {renderCreateModal()}
+      {renderPreviewModal()}
+    </SafeAreaView>
+  );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,62 @@ import {
   SafeAreaView,
   TextInput,
   TouchableOpacity,
+  FlatList,
+  ActivityIndicator
 } from 'react-native';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../../services/firebase/firebaseConfig';
+import VendorCard from '../../components/customer/VendorCard';
 import { COLORS, FONTS, SPACING, RADIUS } from '../../constants';
 
 export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [vendors, setVendors] = useState([]);
+  const [filteredVendors, setFilteredVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        const q = query(collection(db, 'users'), where('userType', '==', 'vendor'));
+        const querySnapshot = await getDocs(q);
+        const vendorsData = [];
+        querySnapshot.forEach((doc) => {
+          vendorsData.push({ id: doc.id, ...doc.data() });
+        });
+        setVendors(vendorsData);
+        setFilteredVendors(vendorsData);
+      } catch (error) {
+        console.error('Error fetching vendors for search:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVendors();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredVendors(vendors);
+    } else {
+      const lowerCaseQuery = searchQuery.toLowerCase();
+      const filtered = vendors.filter(v => 
+        v.stallName?.toLowerCase().includes(lowerCaseQuery) ||
+        v.category?.toLowerCase().includes(lowerCaseQuery) ||
+        v.description?.toLowerCase().includes(lowerCaseQuery)
+      );
+      setFilteredVendors(filtered);
+    }
+  }, [searchQuery, vendors]);
+
+  const renderVendorCard = ({ item: vendor }) => (
+    <View style={styles.vendorContainer}>
+      <VendorCard
+        vendor={vendor}
+        onPress={() => navigation.navigate('VendorProfile', { vendorId: vendor.id, vendor })}
+      />
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,7 +79,7 @@ export default function SearchScreen({ navigation }) {
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search vendors, items..."
+          placeholder="Search vendors, categories..."
           placeholderTextColor={COLORS.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -41,20 +92,29 @@ export default function SearchScreen({ navigation }) {
         )}
       </View>
 
-      {/* Coming Soon Message */}
-      <View style={styles.comingSoonContainer}>
-        <Text style={styles.comingSoonEmoji}>🔎</Text>
-        <Text style={styles.comingSoonTitle}>Advanced Search</Text>
-        <Text style={styles.comingSoonText}>
-          Coming Soon! Advanced search with filters for price, rating, distance, and more.
-        </Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Results */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading vendors...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredVendors}
+          keyExtractor={(item) => item.id}
+          renderItem={renderVendorCard}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🔎</Text>
+              <Text style={styles.emptyTitle}>No results found</Text>
+              <Text style={styles.emptyText}>
+                We couldn't find any vendors matching "{searchQuery}".
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -111,38 +171,41 @@ const styles = StyleSheet.create({
     color: COLORS.textTertiary,
     paddingHorizontal: SPACING.sm,
   },
-  comingSoonContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: SPACING.xxxl,
   },
-  comingSoonEmoji: {
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textSecondary,
+  },
+  listContent: {
+    padding: SPACING.lg,
+  },
+  vendorContainer: {
+    marginBottom: SPACING.md,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.xxxl,
+    paddingHorizontal: SPACING.xl,
+  },
+  emptyEmoji: {
     fontSize: 80,
     marginBottom: SPACING.lg,
   },
-  comingSoonTitle: {
+  emptyTitle: {
     fontSize: FONTS.sizes.xl,
     fontWeight: FONTS.weights.bold,
     color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
-  comingSoonText: {
+  emptyText: {
     fontSize: FONTS.sizes.md,
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: SPACING.xxxl,
-  },
-  backButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.xxxl,
-    paddingVertical: SPACING.lg,
-    borderRadius: RADIUS.full,
-  },
-  backButtonText: {
-    color: COLORS.white,
-    fontSize: FONTS.sizes.md,
-    fontWeight: FONTS.weights.bold,
   },
 });

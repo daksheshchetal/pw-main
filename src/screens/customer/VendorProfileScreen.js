@@ -5,25 +5,55 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Image,
   Linking,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../services/firebase/firebaseConfig';
 import { useCart } from '../../context/CartProvider';
+import { useAuth } from '../../context/AuthContext';
 import MenuItemCard from '../../components/customer/MenuItemCard'; // ✅ UPDATED IMPORT
 import { COLORS, FONTS, SPACING, RADIUS } from '../../constants';
 
 export default function VendorProfileScreen({ route, navigation }) {
   const { vendorId, vendor: initialVendor } = route.params;
   const { addToCart } = useCart();
+  const { currentUser } = useAuth();
 
   const [vendor, setVendor] = useState(initialVendor || null);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(!initialVendor);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  // Check if vendor is already in favorites
+  useEffect(() => {
+    if (!currentUser) return;
+    const userRef = doc(db, 'users', currentUser.uid);
+    const unsub = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const favs = snap.data().favorites || [];
+        setIsFavorite(favs.includes(vendorId));
+      }
+    });
+    return () => unsub();
+  }, [currentUser, vendorId]);
+
+  const handleToggleFavorite = async () => {
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      if (isFavorite) {
+        await updateDoc(userRef, { favorites: arrayRemove(vendorId) });
+      } else {
+        await updateDoc(userRef, { favorites: arrayUnion(vendorId) });
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not update favorites');
+    }
+  };
 
   // Fetch vendor details if not provided
   useEffect(() => {
@@ -138,7 +168,7 @@ export default function VendorProfileScreen({ route, navigation }) {
   } = vendor;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -150,9 +180,9 @@ export default function VendorProfileScreen({ route, navigation }) {
         <Text style={styles.headerTitle}>Vendor Profile</Text>
         <TouchableOpacity
           style={styles.favoriteIcon}
-          onPress={() => Alert.alert('Coming Soon', 'Favorites feature coming soon!')}
+          onPress={handleToggleFavorite}
         >
-          <Text style={styles.favoriteIconText}>♡</Text>
+          <Text style={styles.favoriteIconText}>{isFavorite ? '♥' : '♡'}</Text>
         </TouchableOpacity>
       </View>
 

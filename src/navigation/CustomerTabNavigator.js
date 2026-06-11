@@ -1,36 +1,33 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
+import { Text, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Customer Screens
 import HomeScreen from '../screens/customer/HomeScreen';
 import MapScreen from '../screens/customer/MapScreen';
 import CartScreen from '../screens/customer/CartScreen';
-import ProfileScreen from '../screens/customer/ProfileScreen';
+import PaymentScreen from '../screens/customer/PaymentScreen';
+import OrderConfirmation from '../screens/customer/OrderConfirmation';
+import UserScreen from '../screens/customer/UserScreen';
 import VendorProfileScreen from '../screens/customer/VendorProfileScreen';
 import OrderTrackingScreen from '../screens/customer/OrderTrackingScreen';
-import ReviewScreen from '../screens/customer/WriteReviewScreen';
+import MyOrdersScreen from '../screens/customer/MyOrdersScreen';
 import FavoritesScreen from '../screens/customer/FavoritesScreen';
 import SettingsScreen from '../screens/customer/SettingsScreen';
 import AddressManagerScreen from '../screens/customer/AddressManagerScreen';
+import AddAddressScreen from '../screens/customer/AddAddressScreen';
 import HelpScreen from '../screens/customer/HelpScreen';
 import SearchScreen from '../screens/customer/SearchScreen';
 import CategoryScreen from '../screens/customer/CategoryScreen';
-import UserScreen from '../screens/customer/UserScreen';
 import CategoryBrowserScreen from '../screens/customer/CategoryBrowserScreen';
-import MyOrdersScreen from '../screens/customer/MyOrdersScreen';
 import WriteReviewScreen from '../screens/customer/WriteReviewScreen';
-import VendorReviewsScreen from '../screens/customer/VendorReviewsScreen';
-
+import VendorReviewsScreen from '../screens/customer/VendorReviewScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-/**
- * Home Stack Navigator
- * Contains Home and related screens
- *       <Stack.Screen name="Category" component={CategoryScreen} />
- */
+// Home Stack - vendor browsing
 function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -38,16 +35,12 @@ function HomeStack() {
       <Stack.Screen name="VendorProfile" component={VendorProfileScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Category" component={CategoryScreen} />
-      <Stack.Screen name="CategoryBrowser" component={CategoryBrowserScreen}/>
-
+      <Stack.Screen name="CategoryBrowser" component={CategoryBrowserScreen} />
     </Stack.Navigator>
   );
 }
 
-/**
- * Map Stack Navigator
- * Contains Map and location-based screens
- */
+// Map Stack
 function MapStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -57,48 +50,40 @@ function MapStack() {
   );
 }
 
-/**
- * Cart Stack Navigator
- * Contains Cart and order-related screens
- */
+// Cart Stack - cart, checkout, orders
 function CartStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CartMain" component={CartScreen} />
+      <Stack.Screen name="Payment" component={PaymentScreen} />
+      <Stack.Screen name="OrderConfirmation" component={OrderConfirmation} />
+      <Stack.Screen name="Orders" component={MyOrdersScreen} />
       <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
-      <Stack.Screen name="Orders" component={MyOrdersScreen}/>
+      <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
+      <Stack.Screen name="AddressManager" component={AddressManagerScreen} />
+      <Stack.Screen name="AddAddress" component={AddAddressScreen} />
     </Stack.Navigator>
   );
 }
 
-/**
- * Profile Stack Navigator
- *    <Stack.Screen name="Favorites" component={FavoritesScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="AddressManager" component={AddressManagerScreen} />
-      <Stack.Screen name="Help" component={HelpScreen} />
-      <Stack.Screen name="Review" component={ReviewScreen} />
- * Contains Profile and settings screens
- */
+// Profile Stack - UserScreen as root
 function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={UserScreen} />
-      <Stack.Screen name='Orders' component={MyOrdersScreen}/>
-     <Stack.Screen name="AddressManager" component={AddressManagerScreen} />
-     <Stack.Screen name="Favorites" component={FavoritesScreen} />
-     <Stack.Screen name="Help" component={HelpScreen} />
-     <Stack.Screen name="WriteReview" component={WriteReviewScreen}/>
-     <Stack.Screen name="VendorReviews" component={VendorReviewsScreen}/>
-     <Stack.Screen name="Settings" component={SettingsScreen}/>
+      <Stack.Screen name="Orders" component={MyOrdersScreen} />
+      <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />
+      <Stack.Screen name="Favorites" component={FavoritesScreen} />
+      <Stack.Screen name="AddressManager" component={AddressManagerScreen} />
+      <Stack.Screen name="AddAddress" component={AddAddressScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Help" component={HelpScreen} />
+      <Stack.Screen name="WriteReview" component={WriteReviewScreen} />
+      <Stack.Screen name="VendorReviews" component={VendorReviewsScreen} />
     </Stack.Navigator>
   );
 }
 
-/**
- * Customer Tab Navigator
- * Main bottom tab navigation for customers
- */
 export default function CustomerTabNavigator() {
   return (
     <Tab.Navigator
@@ -107,9 +92,11 @@ export default function CustomerTabNavigator() {
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#EEEEEE',
+          height: Platform.OS === 'ios' ? 90 : 85,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 25,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -123,41 +110,40 @@ export default function CustomerTabNavigator() {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>🏠</Text>
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
-      
+
       <Tab.Screen
         name="Map"
         component={MapStack}
         options={{
           tabBarLabel: 'Map',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>🗺️</Text>
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color} />
           ),
         }}
       />
-      
+
       <Tab.Screen
         name="Cart"
         component={CartStack}
         options={{
           tabBarLabel: 'Cart',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>🛒</Text>
+            <Ionicons name={focused ? 'cart' : 'cart-outline'} size={24} color={color} />
           ),
-          tabBarBadge: undefined, // TODO: Add cart item count badge
         }}
       />
-      
+
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>👤</Text>
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),
         }}
       />

@@ -14,6 +14,7 @@ export default function MenuItemCard({ item, onAddToCart }) {
     price,
     imageURL,
     isVeg = true,
+    isHealthy = false,
     isAvailable = true,
     nutrition,
   } = item;
@@ -60,6 +61,9 @@ export default function MenuItemCard({ item, onAddToCart }) {
               )}
               {nutrition.protein && (
                 <Text style={styles.nutritionText}>{nutrition.protein}g Protein</Text>
+              )}
+              {isHealthy && (
+                <Text style={[styles.nutritionText, { color: '#2E7D32' }]}>🥗 Healthy</Text>
               )}
             </View>
           )}

@@ -8,17 +8,17 @@
 // Theme Colors
 export const COLORS = {
   // Primary
-  primary: '#007AFF',
-  primaryDark: '#0051D5',
-  primaryLight: '#4DA3FF',
+  primary: '#0F766E',
+  primaryDark: '#0F766E', // fallback if we don't have a shade
+  primaryLight: '#0F766E', // fallback
   
   // Secondary
-  secondary: '#4CAF50',
-  secondaryDark: '#388E3C',
-  secondaryLight: '#81C784',
+  secondary: '#F97316',
+  secondaryDark: '#F97316',
+  secondaryLight: '#F97316',
   
   // Status
-  success: '#4CAF50',
+  success: '#22C55E',
   warning: '#FFC107',
   danger: '#DC3545',
   info: '#17A2B8',
@@ -26,12 +26,12 @@ export const COLORS = {
   // Neutrals
   white: '#FFFFFF',
   black: '#000000',
-  background: '#F8F9FA',
+  background: '#FAF7F2',
   cardBg: '#FFFFFF',
   border: '#E1E4E8',
   
   // Text
-  textPrimary: '#333333',
+  textPrimary: '#1F2937',
   textSecondary: '#666666',
   textTertiary: '#999999',
   textPlaceholder: '#AAAAAA',
@@ -40,6 +40,7 @@ export const COLORS = {
   veg: '#4CAF50',
   nonVeg: '#E53935',
   rating: '#FFC107',
+  verified: '#22C55E',
 };
 
 // Typography

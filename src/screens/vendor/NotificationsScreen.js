@@ -1,130 +1,147 @@
-import React, {useState, useEffect} from 'react';
-import{
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    SafeAreaView,
-    ActivityIndicator,
-    Alert,
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import {collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch} from 'firebase/firestore';
-import {db} from '../../services/firebase/firebaseConfig';
-import {useAuth} from '../../context/AuthContext';
-import {COLORS, FONTS, SPACING, RADIUS} from '../../constants';
-export default function NotificationsScreen({navigation}){
-    const {currentUser}=useAuth();
-    const [loading,setLoading]=useState(true);
-    const [notifications, setNotifications]=useState([]);
-    const [filter,setFilter]=useState('all');
-    useEffect(()=>{
-        fetchNotifications();
-    },[]);
-    const fetchNotifications=()=>{
-        const notificationsRef=collection(db, 'notifications');
-        const q=query(
-            notificationsRef,
-            where('userId','==',currentUser.uid),
-            orderBy('createdAt','desc')
-        );
-        const unsubscribe=onSnapshot(q,(snapshot)=> {
-    const notifList=[];
-    snapshot.forEach((doc)=>{
-        notifList.push({id:doc.id, ...doc.data()});
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { db } from '../../services/firebase/firebaseConfig';
+import { useAuth } from '../../context/AuthContext';
+import { COLORS, FONTS, SPACING, RADIUS } from '../../constants';
+
+export default function NotificationsScreen({ navigation }) {
+  const { currentUser } = useAuth();
+  
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [filter, setFilter] = useState('all'); // all, unread, orders, payments, reviews
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser]);
+
+  const fetchNotifications = () => {
+    if (!currentUser) return;
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifList = [];
+      snapshot.forEach((doc) => {
+        notifList.push({ id: doc.id, ...doc.data() });
+      });
+      notifList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setNotifications(notifList);
+      setLoading(false);
     });
-    setNotifications(notifList);
-    setLoading(false);
-});
-return()=>unsubscribe();
+
+    return () => unsubscribe();
+  };
+
+  const getFilteredNotifications = () => {
+    if (filter === 'all') return notifications;
+    if (filter === 'unread') return notifications.filter(n => !n.read);
+    return notifications.filter(n => n.type === filter);
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      const notifRef = doc(db, 'notifications', notificationId);
+      await updateDoc(notifRef, { read: true });
+    } catch (error) {
+      console.error('Error marking as read:', error);
     }
-    const getFilteredNotifictions=()=>{
-        if (filter==="all") return notifications;
-        if (filter==='unread') return notifications.filter(n=> !n.read);
-        return notifications.filter(n=>n.type===filter);
-    };
-    const markAsRead=async(notificationId)=>{
-        try{
-            const notifRef=doc(db,'notifications',notificationId);
-            await updateDoc(notifRef,{read:true});
-        } catch(error){
-            console.error('Error marking as read:',error);
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach((notif) => {
+        if (!notif.read) {
+          const notifRef = doc(db, 'notifications', notif.id);
+          batch.update(notifRef, { read: true });
         }
-    };
-    const markAllAsRead=async()=>{
-        try{
-            const batch=writeBatch(db);
-            notifications.forEach((notif)=>{
-                if(!notif.read){
-                    const notifRef=doc(db,'notifications',notif.id);
-                    batch.update(notifRef,{read:true});
-                }
-            });
-            await batch.commit();
-            Alert.alert('Success','All notifications marked as read');
-        }catch(error){
-            Alert.alert('Error','Could not mark all as read');
-        }
+      });
+      await batch.commit();
+      Alert.alert('Success', 'All notifications marked as read');
+    } catch (error) {
+      Alert.alert('Error', 'Could not mark all as read');
     }
-    const deleteNotification=async(notificationId)=>{
-        Alert.alert(
-            'Delete Notification',
-            'Are you sure you want to delete this notification?',
-            [
-                {text:'Cancel',style:'cancel'},
-                {
-                    text:'Delete',
-                    style:'destructive',
-                    onPress:async()=>{
-                        try{
-                            await deleteDoc(doc(db,'notifications',notificationId));
-                        }catch(error){
-                            Alert.alert('Error','Could not delete notification');
-                        }
-                    },
-                },
-            ]
-        );
-    };
-    const clearAll=()=>{
-        Alert.alert(
-            'Clear all notifications',
-            'This will delete all your notifications. Are you sure?',
-            [
-                {text:'Cancel',style:'cancel'},
-                {
-                    text:'Clear All',
-                    style:'destructive',
-                    onPress:async()=>{
-                        try{
-                            const batch=writeBatch(db);
-                            notifications.forEach((notif)=>{
-                                const notifRef=doc(db,'notifications',notif.id);
-                                batch.delete(notifRef);
-                            });
-                            await batch.commit();
-                            Alert.alert('Success','All notifications cleared');
-                        }catch(error){
-                            Alert.alert('Error','Could not clear notifications');
-                        }
-                    },
-                },
-            ]
-        );
-    };
-    const handleNotificationPress=(notification)=>{
-        //Mark as read
-        if(!notification.read){
-                markAsRead(notification.id);
+  };
+
+  const deleteNotification = async (notificationId) => {
+    Alert.alert(
+      'Delete Notification',
+      'Are you sure you want to delete this notification?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'notifications', notificationId));
+            } catch (error) {
+              Alert.alert('Error', 'Could not delete notification');
             }
-            //Navigate based on type
-            if(notification.data?.screen){
-                navigation.navigate(notification.data.screen,
-                notification.data.params||{});
+          },
+        },
+      ]
+    );
+  };
+
+  const clearAll = () => {
+    Alert.alert(
+      'Clear All Notifications',
+      'This will delete all your notifications. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const batch = writeBatch(db);
+              notifications.forEach((notif) => {
+                const notifRef = doc(db, 'notifications', notif.id);
+                batch.delete(notifRef);
+              });
+              await batch.commit();
+              Alert.alert('Success', 'All notifications cleared');
+            } catch (error) {
+              Alert.alert('Error', 'Could not clear notifications');
             }
-        };
-    
-    const getNotificationIcon = (type) => {
+          },
+        },
+      ]
+    );
+  };
+
+  const handleNotificationPress = (notification) => {
+    // Mark as read
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+
+    // Navigate based on type
+    if (notification.data?.screen) {
+      navigation.navigate(notification.data.screen, notification.data.params || {});
+    }
+  };
+
+  const getNotificationIcon = (type) => {
     const icons = {
       order: '📦',
       payment: '💰',
@@ -134,7 +151,8 @@ return()=>unsubscribe();
     };
     return icons[type] || '🔔';
   };
-const getNotificationColor = (type) => {
+
+  const getNotificationColor = (type) => {
     const colors = {
       order: '#2196F3',
       payment: '#4CAF50',
@@ -144,108 +162,125 @@ const getNotificationColor = (type) => {
     };
     return colors[type] || '#666';
   };
-  const getTimeAgo=(timestamp)=>{
-    if(!timestamp) return'';
-    const now=new Date();
-    const notifDate=timestamp.toDate();
-    const diffMs=now-notifDate;
-    const diffMins=Math.floor(diffMs/60000);
-    const diffHours=Math.floor(diffMs/3600000);
-    const diffDays=Math.floor(diffMs/86400000);
 
-    if(diffMins<1) return 'Just now';
-    if(diffMins<60) return `${diffMins}m ago`;
-    if(diffHours<24) return `${diffHours}h ago`;
-    if(diffDays<7) return `${diffDays}d ago`;
+  const getTimeAgo = (timestamp) => {
+    if (!timestamp) return '';
+    
+    const now = new Date();
+    const notifDate = timestamp.toDate();
+    const diffMs = now - notifDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
     return notifDate.toLocaleDateString();
   };
-  const renderNotification=({item})=>(
+
+  const renderNotification = ({ item }) => (
     <TouchableOpacity
-    style={[styles.notificationCard,!item.read && styles.notificationUnread]}
-    onPress={()=> handleNotificationPress(item)}
-    onLongPress={()=> deleteNotification(item.id)}
+      style={[styles.notificationCard, !item.read && styles.notificationUnread]}
+      onPress={() => handleNotificationPress(item)}
+      onLongPress={() => deleteNotification(item.id)}
     >
-        <View style={[styles.iconContainer,{backgroundColor: getNotificationColor(item.type)}]}>
-            <Text style={styles.icon}>{getNotificationIcon(item.type)}</Text>
-        </View>
-        <View style={styles.notificationContent}>
-            <Text style={[styles.notificationTitle,!item.read && styles.unreadText]}>{item.title}</Text>
-            <Text style={styles.notificationBody} numberOfLines={2}>
-                {item.body} </Text>    
-            <Text style={styles.notificationTime}>
-                {getTimeAgo(item.createdAt)}
-            </Text>
-        </View>
-        {!item.read && <View style={styles.unreadDot}/>}
+      <View style={[styles.iconContainer, { backgroundColor: getNotificationColor(item.type) }]}>
+        <Text style={styles.icon}>{getNotificationIcon(item.type)}</Text>
+      </View>
+      
+      <View style={styles.notificationContent}>
+        <Text style={[styles.notificationTitle, !item.read && styles.unreadText]}>
+          {item.title}
+        </Text>
+        <Text style={styles.notificationBody} numberOfLines={2}>
+          {item.body}
+        </Text>
+        <Text style={styles.notificationTime}>
+          {getTimeAgo(item.createdAt)}
+        </Text>
+      </View>
+
+      {!item.read && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
-  const unreadCount=notifications.filter(n=> !n.read).length;
-  return(
-    <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-            <TouchableOpacity onPress={()=> navigation.goBack()}>
-                <Text style={styles.backIcon}>‹</Text>
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Notifications</Text>
+        <TouchableOpacity onPress={markAllAsRead} disabled={unreadCount === 0}>
+          <Text style={[styles.markAllRead, unreadCount === 0 && styles.disabled]}>
+            Mark All Read
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Filter Tabs */}
+      <View style={styles.filterTabs}>
+        {['all', 'unread', 'order', 'payment', 'review'].map((filterType) => {
+          const count = filterType === 'all' 
+            ? notifications.length 
+            : filterType === 'unread'
+            ? unreadCount
+            : notifications.filter(n => n.type === filterType).length;
+
+          return (
+            <TouchableOpacity
+              key={filterType}
+              style={[styles.filterTab, filter === filterType && styles.filterTabActive]}
+              onPress={() => setFilter(filterType)}
+            >
+              <Text style={[styles.filterTabText, filter === filterType && styles.filterTabTextActive]}>
+                {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                {count > 0 && ` (${count})`}
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            <TouchableOpacity onPress={markAllAsRead} disabled={unreadCount===0}>
-                <Text style={[styles.markAllRead,unreadCount===0 && styles.disabled]}>
-                Mark All Read
-                </Text>
-            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
-        <View style={styles.filterTabs}>
-            {['all','unread','order','payment','review'].map((filterType)=>{
-                const count=filterType==='all'
-                ? unreadCount
-                : notifications.filter(n=>n.type===filterType).length;
-                return(
-                    <TouchableOpacity
-                    key={filterType}
-                    style={[styles.filterTab,filter===filterType && styles.filterTabActive]}
-                    onPress={()=>setFilter(filterType)}
-                >
-                    <Text style={[styles.filterTabText,filter===filterType && styles.filterTabTextActive]}>
-                        {filterType.charAt(0).toUpperCase()+filterType.slice(1)}
-                        {count>0 && `(${count})`}
-                    </Text>
-                </TouchableOpacity>
-                );
-            })}
-        </View>
-        {loading?(
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large"
-                color={COLORS.primary}/>
+      ) : (
+        <FlatList
+          data={getFilteredNotifications()}
+          keyExtractor={(item) => item.id}
+          renderItem={renderNotification}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🔔</Text>
+              <Text style={styles.emptyTitle}>No notifications</Text>
+              <Text style={styles.emptyText}>
+                {filter === 'unread' 
+                  ? "You're all caught up!"
+                  : 'Notifications will appear here'}
+              </Text>
             </View>
-        ):(
-            <FlatList
-            data={getFilteredNotifications()}
-            keyExtractor={(item)=>item.id}
-            renderItem={renderNotification}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyEmoji}>🔔</Text>
-                    <Text style={styles.emptyTitle}>No notifictions</Text>
-                    <Text style={styles.emptyText}>
-                        {filter==='unread'
-                        ?"You're all caught up!"
-                    :'Notifications will appear here'}
-                    </Text>
-                </View>
-            }
-    ListFooterComponent={
-        notifications.length>0?(
-            <TouchableOpacity style={styles.clearAllButton}onPress={clearAll}>
-            <Text style={styles.clearAllText}>Clear All Notifications</Text>
-            </TouchableOpacity>
-        ): null
-    }
-    />
-)}
+          }
+          ListFooterComponent={
+            notifications.length > 0 ? (
+              <TouchableOpacity style={styles.clearAllButton} onPress={clearAll}>
+                <Text style={styles.clearAllText}>Clear All Notifications</Text>
+              </TouchableOpacity>
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
-  )
+  );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {

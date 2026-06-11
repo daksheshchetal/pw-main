@@ -1,46 +1,52 @@
 import React from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {COLORS, FONTS, SPACING, RADIUS} from '../../constants'
-export default function StatisticsScreen({navigation}){
-    return(
-        <SafeAreaView style={styles.container} edges={['top','left','right']}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={()=>navigation.goBack()}>
-                    <Text style={styles.backIcon}>‹</Text>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Business Statistics</Text>
-                <View style={styles.placeholder}/>
-            </View>
-            <ScrollView style={styles.scrollView}>
-                <View style={styles.content}>
-                    <Text style={styles.emoji}>📈</Text>
-                    <Text style={styles.title}>Statistics Coming Soon</Text>
-                    <Text style={styles.subtitle}>
-                        Detailed insights into your sales, customer behaviour, and order trends will appear here.
-                    </Text>
-                    <View style={styles.statsCard}>
-                        <Text style={styles.cardText}>
-                            We are currently setting up your data tracking. Keep selling to see your growth!
-                        </Text>
-                    </View>
-                    <TouchableOpacity
-                    style={styles.button}
-                    onPress={()=>navigation.goBack()}
-                    >
-                        <Text style={styles.buttonText}>Go Back to Dashboard</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
-    )
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS, FONTS, SPACING, RADIUS } from '../../constants';
+
+export default function StatisticsScreen({ navigation }) {
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Business Statistics</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.content}>
+          <Text style={styles.emoji}>📈</Text>
+          <Text style={styles.title}>Statistics Coming Soon</Text>
+          <Text style={styles.subtitle}>
+            Detailed insights into your sales, customer behavior, and order trends will appear here.
+          </Text>
+          
+          <View style={styles.statsCard}>
+            <Text style={styles.cardText}>
+              We are currently setting up your data tracking. Keep selling to see your growth!
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.buttonText}>Go Back to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

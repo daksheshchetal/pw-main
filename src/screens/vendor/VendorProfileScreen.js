@@ -106,6 +106,30 @@ export default function VendorProfileScreen({ navigation }) {
           ))}
         </View>
 
+        {/* Story & Media Section */}
+        <View style={styles.insightsSection}>
+          <Text style={styles.sectionTitle}>Story & Media</Text>
+          {[
+            { id: 'record', label: 'Record Vendor Story', icon: '🎥', screen: 'StoryManager' },
+            { id: 'manage', label: 'Manage Story Reels', icon: '🎞️', screen: 'StoryManager' },
+            { id: 'embed', label: 'Embedding (YT, Instagram, Drive)', icon: '🔗', screen: 'StoryManager' }
+          ].map((option) => (
+            <TouchableOpacity
+              key={option.id}
+              style={styles.optionItem}
+              onPress={() => navigation.navigate(option.screen)}
+            >
+              <View style={styles.optionLeft}>
+                <View style={styles.iconBox}>
+                  <Text style={styles.optionIcon}>{option.icon}</Text>
+                </View>
+                <Text style={styles.optionLabel}>{option.label}</Text>
+              </View>
+              <Text style={styles.arrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Quick Insights */}
         <View style={styles.insightsSection}>
           <Text style={styles.sectionTitle}>Business Insights</Text>

@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
+import { Text, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebase/firebaseConfig';
+import { useAuth } from '../context/AuthContext';
 
 // Vendor Screens
 import VendorDashboardScreen from '../screens/vendor/VendorDashboardScreen';
-import MenuManagementScreen from '../screens/vendor/MenuManagementScreen';
+import MenuManagementScreen from '../screens/vendor/VendorScreen';
 import OrdersScreen from '../screens/vendor/OrdersScreen';
 import EarningsScreen from '../screens/vendor/EarningsScreen';
 import VendorProfileScreen from '../screens/vendor/VendorProfileScreen';
@@ -15,18 +19,19 @@ import StallSetupScreen from '../screens/vendor/StallSetupScreen';
 import FinanceHubScreen from '../screens/vendor/FinanceHubScreen';
 import StatisticsScreen from '../screens/vendor/StatisticsScreen';
 import StoryManagerScreen from '../screens/vendor/StoryManagerScreen';
-import ReviewsScreen from '../screens/vendor/ReviewsScreen';
+import ReviewsScreen from '../screens/vendor/ReviewScreen';
 import VendorSettingsScreen from '../screens/vendor/VendorSettingsScreen';
 import NotificationsScreen from '../screens/vendor/NotificationsScreen';
 import HelpVendorScreen from '../screens/vendor/HelpVendorScreen';
+import OrderDetailsScreen from '../screens/vendor/Orderdetailsscreen';
+import TermsScreen from '../screens/shared/TermsScreen';
+import PrivacyScreen from '../screens/shared/PrivacyScreen';
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 /**
  * Dashboard Stack Navigator
- *       <Stack.Screen name="AIAdvisor" component={AIAdvisorScreen} />
-      <Stack.Screen name="Statistics" component={StatisticsScreen} />
-      <Stack.Screen name="StallSetup" component={StallSetupScreen} />
  * Contains Dashboard and business management screens
  */
 function DashboardStack() {
@@ -35,10 +40,14 @@ function DashboardStack() {
       <Stack.Screen name="DashboardMain" component={VendorDashboardScreen}
       options={{
     tabBarLabel: 'Dashboard',
-    tabBarIcon: ({ focused }) => (
-      <Text style={{ fontSize: focused ? 28 : 24 }}>📊</Text>
+    tabBarIcon: ({ color, focused }) => (
+      <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={24} color={color} />
     ),
   }} />
+      <Stack.Screen name="AIAdvisor" component={AIAdvisorScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="StallSetup" component={StallSetupScreen} />
+      <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
     </Stack.Navigator>
   );
 }
@@ -65,6 +74,7 @@ function OrdersStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="OrdersMain" component={OrdersScreen} />
       <Stack.Screen name="Reviews" component={ReviewsScreen} />
+      <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
     </Stack.Navigator>
   );
 }
@@ -79,6 +89,7 @@ function EarningsStack() {
       <Stack.Screen name="EarningsMain" component={EarningsScreen} />
       <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} />
       <Stack.Screen name="FinanceHub" component={FinanceHubScreen} />
+      <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
     </Stack.Navigator>
   );
 }
@@ -91,9 +102,15 @@ function VendorProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={VendorProfileScreen} />
-      <Stack.Screen name="Settings" component={VendorSettingsScreen} />
+      <Stack.Screen name="StallSetup" component={StallSetupScreen} />
+      <Stack.Screen name="VendorSettings" component={VendorSettingsScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Help" component={HelpVendorScreen} />
+      <Stack.Screen name="TransactionHistory" component={TransactionHistoryScreen} />
+      <Stack.Screen name="Statistics" component={StatisticsScreen} />
+      <Stack.Screen name="FinanceHub" component={FinanceHubScreen} />
+      <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Screen name="Privacy" component={PrivacyScreen} />
     </Stack.Navigator>
   );
 }
@@ -103,6 +120,27 @@ function VendorProfileStack() {
  * Main bottom tab navigation for vendors
  */
 export default function VendorTabNavigator() {
+  const { currentUser } = useAuth();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const ordersRef = collection(db, 'orders');
+    const q = query(
+      ordersRef,
+      where('vendorId', '==', currentUser.uid),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPendingCount(snapshot.docs.length);
+    }, (error) => {
+      console.error('Error fetching pending orders count:', error);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -110,9 +148,11 @@ export default function VendorTabNavigator() {
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#EEEEEE',
+          height: Platform.OS === 'ios' ? 90 : 85,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 25,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -126,7 +166,7 @@ export default function VendorTabNavigator() {
         options={{
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>📊</Text>
+            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -137,7 +177,7 @@ export default function VendorTabNavigator() {
         options={{
           tabBarLabel: 'Menu',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>📋</Text>
+            <Ionicons name={focused ? 'restaurant' : 'restaurant-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -148,9 +188,9 @@ export default function VendorTabNavigator() {
         options={{
           tabBarLabel: 'Orders',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>🛍️</Text>
+            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />
           ),
-          tabBarBadge: undefined, // TODO: Add pending orders count badge
+          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
         }}
       />
       
@@ -160,7 +200,7 @@ export default function VendorTabNavigator() {
         options={{
           tabBarLabel: 'Earnings',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>💰</Text>
+            <Ionicons name={focused ? 'wallet' : 'wallet-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -171,7 +211,7 @@ export default function VendorTabNavigator() {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Text style={{ fontSize: focused ? 28 : 24 }}>⚙️</Text>
+            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={24} color={color} />
           ),
         }}
       />

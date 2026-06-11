@@ -5,10 +5,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   collection,
   query,
@@ -38,11 +38,11 @@ export default function MyOrdersScreen({ navigation }) {
 
   // Fetch user's orders
   useEffect(() => {
+    if (!currentUser) return;
     const ordersRef = collection(db, 'orders');
     const q = query(
       ordersRef,
-      where('customerId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc')
+      where('customerId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(
@@ -52,6 +52,7 @@ export default function MyOrdersScreen({ navigation }) {
         snapshot.forEach((doc) => {
           ordersList.push({ id: doc.id, ...doc.data() });
         });
+        ordersList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setOrders(ordersList);
         setLoading(false);
         setRefreshing(false);
@@ -144,7 +145,7 @@ export default function MyOrdersScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

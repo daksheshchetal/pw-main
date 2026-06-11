@@ -5,17 +5,18 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   RefreshControl,
   Alert,
   Switch,
+  Dimensions,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   collection,
   query,
   where,
   onSnapshot,
-  getDocs,
   doc,
   updateDoc,
   Timestamp,
@@ -23,9 +24,13 @@ import {
 import { db } from '../../services/firebase/firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS, SPACING, RADIUS, ORDER_STATUS } from '../../constants';
+import StatsCard from '../../components/vendor/StatsCard';
+import AITipCard from '../../components/vendor/AITipCard.JS';
+
+const { width } = Dimensions.get('window');
 
 export default function VendorDashboardScreen({ navigation }) {
-  const { currentUser, logOut } = useAuth();
+  const { currentUser } = useAuth();
 
   const [isOnline, setIsOnline] = useState(false);
   const [todayStats, setTodayStats] = useState({
@@ -42,6 +47,7 @@ export default function VendorDashboardScreen({ navigation }) {
 
   // Fetch vendor online status
   useEffect(() => {
+    if (!currentUser) return;
     const vendorRef = doc(db, 'users', currentUser.uid);
     const unsubscribe = onSnapshot(vendorRef, (doc) => {
       if (doc.exists()) {
@@ -55,6 +61,11 @@ export default function VendorDashboardScreen({ navigation }) {
   useEffect(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
 
     const ordersRef = collection(db, 'orders');
     const q = query(
@@ -77,24 +88,17 @@ export default function VendorDashboardScreen({ navigation }) {
           const order = { id: doc.id, ...doc.data() };
           orders.push(order);
 
-          // Count by status
           if (order.status === 'pending' || order.status === 'accepted') {
             pending++;
           }
           if (order.status === 'delivered') {
             completed++;
             totalEarnings += order.totalAmount || 0;
-
-            // Split by payment method
-            if (order.paymentMethod === 'cash') {
-              cash += order.totalAmount || 0;
-            } else if (order.paymentMethod === 'upi') {
-              upi += order.totalAmount || 0;
-            }
+            if (order.paymentMethod === 'cash') cash += order.totalAmount || 0;
+            else if (order.paymentMethod === 'upi') upi += order.totalAmount || 0;
           }
         });
 
-        // Sort by most recent first
         orders.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
 
         setTodayStats({
@@ -105,7 +109,7 @@ export default function VendorDashboardScreen({ navigation }) {
           cashEarnings: cash,
           upiEarnings: upi,
         });
-        setRecentOrders(orders.slice(0, 5)); // Show only 5 recent orders
+        setRecentOrders(orders.slice(0, 5));
         setLoading(false);
         setRefreshing(false);
       },
@@ -121,6 +125,7 @@ export default function VendorDashboardScreen({ navigation }) {
 
   const toggleOnlineStatus = async (value) => {
     try {
+      if (!currentUser) return;
       const vendorRef = doc(db, 'users', currentUser.uid);
       await updateDoc(vendorRef, {
         isOnline: value,
@@ -129,19 +134,15 @@ export default function VendorDashboardScreen({ navigation }) {
       setIsOnline(value);
       Alert.alert(
         value ? 'You are now ONLINE' : 'You are now OFFLINE',
-        value
-          ? 'Customers can now see your stall'
-          : 'Your stall is hidden from customers'
+        value ? 'Customers can now see your stall' : 'Your stall is hidden from customers'
       );
     } catch (error) {
-      console.error('Error updating status:', error);
-      Alert.alert('Error', 'Could not update status. Please try again.');
+      Alert.alert('Error', 'Could not update status.');
     }
   };
 
   const handleRefresh = () => {
     setRefreshing(true);
-    // The onSnapshot listener will automatically refresh the data
   };
 
   const getTimeGreeting = () => {
@@ -152,508 +153,249 @@ export default function VendorDashboardScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>{getTimeGreeting()} 👋</Text>
-          <Text style={styles.title}>Your Dashboard</Text>
+          <Text style={styles.title}>Dashboard</Text>
         </View>
         <TouchableOpacity
           style={styles.settingsButton}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => navigation.navigate('Profile', { screen: 'VendorSettings' })}
         >
-          <Text style={styles.settingsIcon}>⚙️</Text>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>{currentUser?.displayName?.charAt(0) || 'V'}</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
       <ScrollView
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />
         }
       >
-        {/* Online/Offline Toggle */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusLeft}>
-            <View
-              style={[
-                styles.statusDot,
-                { backgroundColor: isOnline ? COLORS.success : COLORS.textTertiary },
-              ]}
-            />
+        {/* Status Card */}
+        <View style={[styles.statusCard, { borderColor: isOnline ? '#C8E6C9' : '#FFCDD2' }]}>
+          <View style={styles.statusInfo}>
+            <View style={[styles.pulse, { backgroundColor: isOnline ? '#4CAF50' : '#F44336' }]} />
             <View>
-              <Text style={styles.statusTitle}>
-                {isOnline ? 'Your stall is OPEN' : 'Your stall is CLOSED'}
+              <Text style={styles.statusLabel}>
+                {isOnline ? 'Your Stall is Live' : 'Your Stall is Closed'}
               </Text>
-              <Text style={styles.statusSubtitle}>
-                {isOnline
-                  ? 'Visible to customers nearby'
-                  : 'Hidden from customers'}
+              <Text style={styles.statusSubtext}>
+                {isOnline ? 'Customers can place orders' : 'Switch online to start selling'}
               </Text>
             </View>
           </View>
           <Switch
             value={isOnline}
             onValueChange={toggleOnlineStatus}
-            trackColor={{ false: '#767577', true: '#81b0ff' }}
-            thumbColor={isOnline ? COLORS.success : '#f4f3f4'}
+            trackColor={{ false: '#ddd', true: '#C8E6C9' }}
+            thumbColor={isOnline ? '#4CAF50' : '#f4f3f4'}
           />
         </View>
 
-        {/* Today's Stats */}
+        {/* AI Insight Highlight */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Overview</Text>
-
-          <View style={styles.statsGrid}>
-            {/* Total Orders */}
-            <TouchableOpacity
-              style={styles.statCard}
-              onPress={() => navigation.navigate('Orders')}
-            >
-              <Text style={styles.statEmoji}>📦</Text>
-              <Text style={styles.statValue}>{todayStats.totalOrders}</Text>
-              <Text style={styles.statLabel}>Total Orders</Text>
-            </TouchableOpacity>
-
-            {/* Pending Orders */}
-            <TouchableOpacity
-              style={[styles.statCard, styles.statCardHighlight]}
-              onPress={() => navigation.navigate('Orders', { filter: 'pending' })}
-            >
-              <Text style={styles.statEmoji}>⏳</Text>
-              <Text style={styles.statValue}>{todayStats.pendingOrders}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </TouchableOpacity>
-
-            {/* Completed Orders */}
-            <TouchableOpacity
-              style={styles.statCard}
-              onPress={() => navigation.navigate('Orders', { filter: 'delivered' })}
-            >
-              <Text style={styles.statEmoji}>✅</Text>
-              <Text style={styles.statValue}>{todayStats.completedOrders}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
-            </TouchableOpacity>
-
-            {/* Today's Earnings */}
-            <TouchableOpacity
-              style={[styles.statCard, styles.statCardSuccess]}
-              onPress={() => navigation.navigate('Earnings')}
-            >
-              <Text style={styles.statEmoji}>💰</Text>
-              <Text style={styles.statValue}>
-                ₹{todayStats.todayEarnings.toFixed(0)}
-              </Text>
-              <Text style={styles.statLabel}>Today's Earnings</Text>
-            </TouchableOpacity>
-          </View>
+          <AITipCard 
+            tip="High demand for Grilled Paneer! Add a Healthy tag to boost orders."
+            impact="+15% potential growth"
+            onPress={() => navigation.navigate('AIAdvisor')}
+          />
         </View>
 
-        {/* Earnings Breakdown */}
+        {/* Stats Grid */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Breakdown</Text>
-          <View style={styles.earningsCard}>
-            <View style={styles.earningsRow}>
-              <View style={styles.earningsItem}>
-                <Text style={styles.earningsEmoji}>💵</Text>
-                <View>
-                  <Text style={styles.earningsLabel}>Cash</Text>
-                  <Text style={styles.earningsValue}>
-                    ₹{todayStats.cashEarnings.toFixed(2)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.earningsItem}>
-                <Text style={styles.earningsEmoji}>📱</Text>
-                <View>
-                  <Text style={styles.earningsLabel}>UPI</Text>
-                  <Text style={styles.earningsValue}>
-                    ₹{todayStats.upiEarnings.toFixed(2)}
-                  </Text>
-                </View>
-              </View>
-            </View>
+          <Text style={styles.sectionTitle}>Today's Performance</Text>
+          <View style={styles.statsGrid}>
+            <StatsCard 
+              title="Total Orders" 
+              value={todayStats.totalOrders} 
+              icon="📦" 
+              color="#6366F1"
+              onPress={() => navigation.navigate('Orders')}
+            />
+            <StatsCard 
+              title="Today's Sales" 
+              value={`₹${todayStats.todayEarnings.toFixed(0)}`} 
+              icon="💰" 
+              color="#10B981"
+              onPress={() => navigation.navigate('Earnings')}
+            />
+            <StatsCard 
+              title="Pending" 
+              value={todayStats.pendingOrders} 
+              icon="⏳" 
+              color="#F59E0B"
+              onPress={() => navigation.navigate('Orders', { filter: 'pending' })}
+            />
+            <StatsCard 
+              title="Completed" 
+              value={todayStats.completedOrders} 
+              icon="✅" 
+              color="#3B82F6"
+              onPress={() => navigation.navigate('Orders', { filter: 'delivered' })}
+            />
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Orders')}
-            >
-              <Text style={styles.actionEmoji}>📋</Text>
-              <Text style={styles.actionText}>View Orders</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsRow}>
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Menu')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F0F7FF' }]}>
+                <Text style={styles.emoji}>🍽️</Text>
+              </View>
+              <Text style={styles.actionLabel}>Manage Menu</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Orders')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F0FFF4' }]}>
+                <Text style={styles.emoji}>📋</Text>
+              </View>
+              <Text style={styles.actionLabel}>Orders</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Menu')}
-            >
-              <Text style={styles.actionEmoji}>🍽️</Text>
-              <Text style={styles.actionText}>Manage Menu</Text>
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Earnings')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#FFF9F0' }]}>
+                <Text style={styles.emoji}>📈</Text>
+              </View>
+              <Text style={styles.actionLabel}>Insights</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('Earnings')}
-            >
-              <Text style={styles.actionEmoji}>💰</Text>
-              <Text style={styles.actionText}>Earnings</Text>
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('AIAdvisor')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F5F3FF' }]}>
+                <Text style={styles.emoji}>🤖</Text>
+              </View>
+              <Text style={styles.actionLabel}>AI Advisor</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => Alert.alert('Coming Soon', 'AI tips feature coming soon!')}
-            >
-              <Text style={styles.actionEmoji}>🤖</Text>
-              <Text style={styles.actionText}>AI Tips</Text>
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
 
         {/* Recent Orders */}
-        <View style={styles.section}>
+        <View style={[styles.section, { marginBottom: 40 }]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Orders</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Orders')}>
-              <Text style={styles.viewAllText}>View All →</Text>
+              <Text style={styles.seeAll}>See All →</Text>
             </TouchableOpacity>
           </View>
 
           {recentOrders.length === 0 ? (
-            <View style={styles.emptyOrders}>
-              <Text style={styles.emptyEmoji}>📦</Text>
-              <Text style={styles.emptyText}>No orders yet today</Text>
-              <Text style={styles.emptySubtext}>
-                Orders will appear here when customers place them
-              </Text>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyEmoji}>🏪</Text>
+              <Text style={styles.emptyText}>Waiting for your first order of the day!</Text>
             </View>
           ) : (
             recentOrders.map((order) => (
               <TouchableOpacity
                 key={order.id}
                 style={styles.orderCard}
-                onPress={() =>
-                  navigation.navigate('OrderDetails', { orderId: order.id, order })
-                }
+                onPress={() => navigation.navigate('OrderDetails', { orderId: order.id, order })}
               >
-                <View style={styles.orderHeader}>
-                  <Text style={styles.orderId}>Order #{order.id.slice(-6)}</Text>
-                  <View
-                    style={[
-                      styles.orderStatusBadge,
-                      {
-                        backgroundColor:
-                          ORDER_STATUS[order.status?.toUpperCase()]?.color ||
-                          COLORS.textTertiary,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.orderStatusText}>
-                      {order.status?.toUpperCase()}
+                <View style={styles.orderLeft}>
+                  <View style={styles.orderIcon}>
+                    <Text style={styles.emoji}>🍔</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.orderId}>Order #{order.id.slice(-6).toUpperCase()}</Text>
+                    <Text style={styles.orderTime}>
+                      {order.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
                 </View>
-
-                <View style={styles.orderDetails}>
-                  <Text style={styles.orderItems}>
-                    {order.items?.length || 0} items • ₹
-                    {order.totalAmount?.toFixed(2) || 0}
-                  </Text>
-                  <Text style={styles.orderTime}>
-                    {order.createdAt?.toDate().toLocaleTimeString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
+                <View style={styles.orderRight}>
+                  <Text style={styles.orderPrice}>₹{order.totalAmount?.toFixed(0)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: ORDER_STATUS[order.status?.toUpperCase()]?.color + '20' }]}>
+                    <Text style={[styles.statusBadgeText, { color: ORDER_STATUS[order.status?.toUpperCase()]?.color }]}>
+                      {order.status?.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))
           )}
         </View>
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
   },
-  greeting: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: FONTS.sizes.xxl,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-  },
-  settingsButton: {
-    width: 44,
-    height: 44,
+  greeting: { fontSize: 14, color: '#666', fontWeight: '500' },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#1A1A1A' },
+  settingsButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E0EFFF',
   },
-  settingsIcon: {
-    fontSize: 24,
-  },
+  avatarText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   statusCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.lg,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: '#fff',
+    margin: 20,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
-  statusLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: SPACING.md,
-  },
-  statusTitle: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-    marginBottom: 2,
-  },
-  statusSubtitle: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-  },
-  section: {
-    marginTop: SPACING.lg,
-    paddingHorizontal: SPACING.lg,
-  },
-  sectionTitle: {
-    fontSize: FONTS.sizes.lg,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  viewAllText: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.primary,
-    fontWeight: FONTS.weights.semibold,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -SPACING.xs,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    marginHorizontal: SPACING.xs,
-    marginBottom: SPACING.md,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statCardHighlight: {
-    backgroundColor: COLORS.warning + '20',
-    borderWidth: 2,
-    borderColor: COLORS.warning,
-  },
-  statCardSuccess: {
-    backgroundColor: COLORS.success + '20',
-    borderWidth: 2,
-    borderColor: COLORS.success,
-  },
-  statEmoji: {
-    fontSize: 32,
-    marginBottom: SPACING.sm,
-  },
-  statValue: {
-    fontSize: FONTS.sizes.xxxl,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.xs,
-  },
-  statLabel: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  earningsCard: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  earningsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  earningsItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  earningsEmoji: {
-    fontSize: 28,
-    marginRight: SPACING.md,
-  },
-  earningsLabel: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  earningsValue: {
-    fontSize: FONTS.sizes.xl,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-  },
-  divider: {
-    width: 1,
-    height: 40,
-    backgroundColor: COLORS.border,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -SPACING.xs,
-  },
-  actionButton: {
-    width: '48%',
-    backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    borderRadius: RADIUS.md,
-    marginHorizontal: SPACING.xs,
-    marginBottom: SPACING.md,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  actionEmoji: {
-    fontSize: 32,
-    marginBottom: SPACING.sm,
-  },
-  actionText: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textPrimary,
-    fontWeight: FONTS.weights.semibold,
-    textAlign: 'center',
-  },
+  statusInfo: { flexDirection: 'row', alignItems: 'center' },
+  pulse: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
+  statusLabel: { fontSize: 16, fontWeight: 'bold', color: '#1A1A1A' },
+  statusSubtext: { fontSize: 12, color: '#666', marginTop: 2 },
+  section: { paddingHorizontal: 20, marginTop: 24 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 16 },
+  seeAll: { fontSize: 14, color: '#007AFF', fontWeight: '600' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  actionsRow: { paddingRight: 20 },
+  actionItem: { alignItems: 'center', marginRight: 24 },
+  actionIcon: { width: 60, height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  emoji: { fontSize: 24 },
+  actionLabel: { fontSize: 12, fontWeight: '600', color: '#444' },
   orderCard: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.md,
-    elevation: 2,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
-  orderId: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-  },
-  orderStatusBadge: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.sm,
-  },
-  orderStatusText: {
-    fontSize: FONTS.sizes.xs,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.white,
-  },
-  orderDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  orderItems: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-  },
-  orderTime: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textTertiary,
-  },
-  emptyOrders: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.xxxl,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: SPACING.md,
-  },
-  emptyText: {
-    fontSize: FONTS.sizes.md,
-    fontWeight: FONTS.weights.semibold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.xs,
-  },
-  emptySubtext: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  bottomSpacer: {
-    height: SPACING.xl,
-  },
+  orderLeft: { flexDirection: 'row', alignItems: 'center' },
+  orderIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8F9FA', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  orderId: { fontSize: 15, fontWeight: 'bold', color: '#1A1A1A' },
+  orderTime: { fontSize: 12, color: '#999', marginTop: 2 },
+  orderRight: { alignItems: 'flex-end' },
+  orderPrice: { fontSize: 16, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 4 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusBadgeText: { fontSize: 10, fontWeight: 'bold' },
+  emptyCard: { backgroundColor: '#fff', padding: 40, borderRadius: 20, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#ccc' },
+  emptyEmoji: { fontSize: 40, marginBottom: 12 },
+  emptyText: { fontSize: 14, color: '#999', textAlign: 'center' },
 });

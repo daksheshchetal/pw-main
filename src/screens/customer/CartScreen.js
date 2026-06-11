@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/firebaseConfig';
 import { useCart } from '../../context/CartProvider';
 import { useAuth } from '../../context/AuthContext';
@@ -22,99 +22,50 @@ export default function CartScreen({ navigation }) {
   
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState(null);
+
+  // Load default address on mount
+  useEffect(() => {
+    if (!currentUser) return;
+    const loadAddress = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          const addresses = data.addresses || [];
+          const defaultId = data.defaultAddressId;
+          const defaultAddr = addresses.find(a => a.id === defaultId) || addresses[0] || null;
+          setDeliveryAddress(defaultAddr);
+        }
+      } catch (e) {
+        console.error('Error loading address:', e);
+      }
+    };
+    loadAddress();
+  }, [currentUser]);
 
   const deliveryFee = cartTotal > 0 ? 10 : 0;
   const finalTotal = cartTotal + deliveryFee;
 
   const handlePlaceOrder = async () => {
-    if (cartItems.length === 0) {
-      Alert.alert('Empty Cart', 'Please add items to your cart first.');
-      return;
-    }
+  if (cartItems.length === 0) {
+    Alert.alert('Empty Cart', 'Please add items to your cart first.');
+    return;
+  }
 
-    // Group items by vendor
-    const vendorGroups = {};
-    cartItems.forEach((item) => {
-      const vendorId = item.vendorId;
-      if (!vendorGroups[vendorId]) {
-        vendorGroups[vendorId] = {
-          vendorId,
-          vendorName: item.vendorName || 'Unknown Vendor',
-          items: [],
-        };
-      }
-      vendorGroups[vendorId].items.push({
-        itemId: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-      });
-    });
-
-    Alert.alert(
-      'Confirm Order',
-      `Place order for ₹${finalTotal.toFixed(2)}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            setPlacingOrder(true);
-            try {
-              // Create separate orders for each vendor
-              const orderPromises = Object.values(vendorGroups).map((group) => {
-                const vendorTotal = group.items.reduce(
-                  (sum, item) => sum + item.price * item.quantity,
-                  0
-                );
-
-                return addDoc(collection(db, 'orders'), {
-                  customerId: currentUser.uid,
-                  vendorId: group.vendorId,
-                  vendorName: group.vendorName,
-                  items: group.items,
-                  totalAmount: vendorTotal + deliveryFee,
-                  deliveryFee,
-                  paymentMethod,
-                  status: 'pending',
-                  createdAt: serverTimestamp(),
-                  deliveryAddress: {
-                    // TODO: Get from user's saved addresses
-                    type: 'home',
-                    address: 'User address here',
-                  },
-                });
-              });
-
-              await Promise.all(orderPromises);
-              
-              clearCart();
-              setPlacingOrder(false);
-
-              Alert.alert(
-                'Order Placed! 🎉',
-                'Your order has been sent to the vendor. You will receive updates soon.',
-                [
-                  {
-                    text: 'Track Order',
-                    onPress: () => navigation.navigate('Orders'),
-                  },
-                  {
-                    text: 'Continue Shopping',
-                    onPress: () => navigation.navigate('Home'),
-                  },
-                ]
-              );
-            } catch (error) {
-              console.error('Error placing order:', error);
-              setPlacingOrder(false);
-              Alert.alert('Error', 'Failed to place order. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
+  // Extract vendor info from the first item (assuming single vendor cart)
+  const vendorId = cartItems[0]?.vendorId;
+  const vendorName = cartItems[0]?.vendorName;
+  const orderData = { items: cartItems, vendorId, vendorName };
+  
+  navigation.navigate('Payment', {
+    orderData,
+    totalAmount: finalTotal,
+    deliveryFee,
+    paymentMethod,
+  });
+};
+  
 
   if (placingOrder) {
     return (
@@ -126,7 +77,7 @@ export default function CartScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -176,19 +127,39 @@ export default function CartScreen({ navigation }) {
                 <Text style={styles.sectionTitle}>Delivery Address</Text>
                 <TouchableOpacity
                   onPress={() =>
-                    Alert.alert('Coming Soon', 'Address management coming soon!')
+                    navigation.navigate('AddressManager', {
+                      selecting: true,
+                      onSelect: (addr) => setDeliveryAddress(addr),
+                    })
                   }
                 >
                   <Text style={styles.changeText}>Change</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.addressCard}>
-                <Text style={styles.addressType}>🏠 Home</Text>
-                <Text style={styles.addressText}>
-                  123 Main Street, Sector 15{'\n'}
-                  New Delhi, 110001
-                </Text>
-              </View>
+              {deliveryAddress ? (
+                <View style={styles.addressCard}>
+                  <Text style={styles.addressType}>
+                    {deliveryAddress.type === 'home' ? '🏠' : deliveryAddress.type === 'work' ? '💼' : '📍'}{' '}
+                    {deliveryAddress.type?.charAt(0).toUpperCase() + deliveryAddress.type?.slice(1)}
+                  </Text>
+                  <Text style={styles.addressText}>
+                    {deliveryAddress.line1}{deliveryAddress.line2 ? `, ${deliveryAddress.line2}` : ''}{'\n'}
+                    {deliveryAddress.city}, {deliveryAddress.state} - {deliveryAddress.pincode}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addAddressButton}
+                  onPress={() =>
+                    navigation.navigate('AddressManager', {
+                      selecting: true,
+                      onSelect: (addr) => setDeliveryAddress(addr),
+                    })
+                  }
+                >
+                  <Text style={styles.addAddressText}>＋ Add a delivery address</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Payment Method */}
@@ -408,6 +379,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     padding: SPACING.md,
     borderRadius: RADIUS.sm,
+  },
+  addAddressButton: {
+    backgroundColor: COLORS.background,
+    padding: SPACING.md,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  addAddressText: {
+    color: COLORS.primary,
+    fontSize: FONTS.sizes.sm,
+    fontWeight: FONTS.weights.semibold,
   },
   addressType: {
     fontSize: FONTS.sizes.sm,

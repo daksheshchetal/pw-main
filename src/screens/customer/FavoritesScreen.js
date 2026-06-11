@@ -5,11 +5,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase/firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
@@ -106,7 +106,10 @@ export default function FavoritesScreen({ navigation }) {
       <View style={styles.vendorContainer}>
         <VendorCard
           vendor={vendor}
-          onPress={() => navigation.navigate('VendorProfile', { vendorId: vendor.id, vendor })}
+          onPress={() => navigation.navigate('Home', { 
+            screen: 'VendorProfile', 
+            params: { vendorId: vendor.id, vendor } 
+          })}
         />
         <TouchableOpacity
           style={styles.removeButton}
@@ -119,7 +122,7 @@ export default function FavoritesScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

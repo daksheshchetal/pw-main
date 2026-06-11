@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '../../../src/services/firebase/firebaseConfig';
+import { db } from '../../services/firebase/firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartProvider';
 import VendorCard from '../../components/customer/VendorCard';
@@ -101,7 +101,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -187,7 +187,7 @@ export default function HomeScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => navigation.navigate('Favorites')}
+          onPress={() => navigation.navigate('Profile', { screen: 'Favorites' })}
         >
           <Text style={styles.actionEmoji}>❤️</Text>
           <Text style={styles.actionText}>Favorites</Text>

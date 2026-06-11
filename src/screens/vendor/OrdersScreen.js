@@ -43,11 +43,11 @@ export default function OrdersScreen({ route, navigation }) {
 
   // Fetch orders
   useEffect(() => {
+    if (!currentUser) return;
     const ordersRef = collection(db, 'orders');
     const q = query(
       ordersRef,
-      where('vendorId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc')
+      where('vendorId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(
@@ -57,6 +57,7 @@ export default function OrdersScreen({ route, navigation }) {
         snapshot.forEach((doc) => {
           ordersList.push({ id: doc.id, ...doc.data() });
         });
+        ordersList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setOrders(ordersList);
         setLoading(false);
         setRefreshing(false);

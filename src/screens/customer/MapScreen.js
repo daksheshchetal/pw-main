@@ -1,7 +1,8 @@
 import React,{useEffect,useState} from 'react';
-import{StyleSheet,View,Text,ActivityIndicator,Platform} from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {collection,query,where,onSnapshot} from 'firebase/firestore';
-import {db} from '../../../src/services/firebase/firebaseConfig';
+import {db} from '../../services/firebase/firebaseConfig';
 let MapView, Marker,Callout;
 if (Platform.OS !=='web'){
     try{
@@ -14,7 +15,7 @@ if (Platform.OS !=='web'){
         console.warn("Maps could not be loaded.");
     }
 }
-const MapScreen=()=>{
+const MapScreen = ({ navigation }) => {
     const[vendors,setVendors]=useState([]);
     const[loading,setLoading]=useState(true);
     useEffect(()=>{
@@ -55,7 +56,10 @@ if(Platform.OS==='web'){
     );
 }
 return(
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <View style={styles.header}>
+            <Text style={styles.headerTitle}>Explore Mohalla</Text>
+        </View>
         <MapView
             style={styles.map}
             initialRegion={{
@@ -71,9 +75,9 @@ return(
                         coordinate={vendor.location}
                         pinColor="red"
                     >
-                        <Callout>
+                        <Callout onPress={() => navigation.navigate('VendorProfileFromMap', { vendorId: vendor.id, vendor })}>
                             <View style={styles.callout}>
-                            <Text style={styles.vendorName}>{vendor.email.split('@')[0]}</Text>
+                            <Text style={styles.vendorName}>{vendor.stallName || vendor.email.split('@')[0]}</Text>
                             <Text style={styles.vendorStatus}>Live Now</Text>
                             <Text style={styles.tapText}>Tap to view menu</Text>
                             </View>
@@ -81,13 +85,25 @@ return(
                      </Marker>
                 ))}
             </MapView>
-    </View>
+    </SafeAreaView>
     
 )
 }
 const styles=StyleSheet.create({
-    container:{flex:1},
-    map:{width:'100%',height:'100%'},
+    container:{flex:1, backgroundColor: '#fff'},
+    header: {
+        padding: 16,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    map:{flex: 1},
     center:{flex:1,justifyContent:'center',alignItems:'center',},
     callout:{padding:5,minWidth:120},
     vendorName:{fontWeight:'bold',fontSize:16},
