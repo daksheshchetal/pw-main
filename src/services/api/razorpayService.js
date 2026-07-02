@@ -21,7 +21,7 @@ import { db } from '../firebase/firebaseConfig';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 // Replace with your Razorpay Key ID from https://dashboard.razorpay.com
-const RAZORPAY_KEY_ID = 'rzp_test_XXXXXXXXXXXXXXXX'; // ← REPLACE THIS
+const RAZORPAY_KEY_ID = 'rzp_test_T55EbaplJKBpPx'; // ← REPLACE THIS
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 /**
@@ -68,11 +68,13 @@ export const initiateRazorpayPayment = async (options) => {
       display: {
         blocks: {
           utib: { name: 'Pay via UPI', instruments: [{ method: 'upi' }] },
-          other: { name: 'Other Payment Modes', instruments: [
-            { method: 'card' },
-            { method: 'netbanking' },
-            { method: 'wallet' },
-          ]},
+          other: {
+            name: 'Other Payment Modes', instruments: [
+              { method: 'card' },
+              { method: 'netbanking' },
+              { method: 'wallet' },
+            ]
+          },
         },
         sequence: ['block.utib', 'block.other'],
         preferences: { show_default_blocks: false },
